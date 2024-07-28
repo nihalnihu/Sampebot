@@ -1,8 +1,8 @@
-import logging
-from pyrogram import Client, filters
-from moviepy.editor import VideoFileClip
-from io import BytesIO
 import os
+import logging
+from moviepy.video.io.VideoFileClip import VideoFileClip
+from telegram import Update, InputFile
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 from flask import Flask
 import threading
 
@@ -14,66 +14,47 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
-bot = Flask(__name__)
+app = Flask(__name__)
 
-@bot.route('/')
+@app.route('/')
 def hello_world():
     return 'Hello, World!'
 
-@bot.route('/health')
+@app.route('/health')
 def health_check():
     return 'Healthy', 200
 
 def run_flask():
-    bot.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8080)
 
-# Fetch API credentials from environment variables
-api_id = os.getenv("TELEGRAM_API_ID")
-api_hash = os.getenv("TELEGRAM_API_HASH")
-bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text('Send me a movie file and I will extract a 30-second sample.')
 
-# Initialize the Pyrogram client
-app = Client("my_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
+def handle_document(update: Update, context: CallbackContext):
+    file = update.message.document.get_file()
+    file.download('movie.mp4')
 
-@app.on_message(filters.command("start") & filters.private)
-async def start_command(client, message):
-    await message.reply(
-        "Hello! I'm your video processing bot. Send me a video, and I'll send you a 30-second sample from it."
-    )
-    logger.info("Sent start message to user: %s", message.from_user.id)
+    with VideoFileClip('movie.mp4') as video:
+        duration = video.duration
+        start_time = max(0, duration / 2 - 15)  # Get the middle 30 seconds
+        end_time = start_time + 30
+        clip = video.subclip(start_time, end_time)
+        clip.write_videofile('sample.mp4', codec='libx264')
 
-@app.on_message(filters.video & filters.private)
-async def handle_video(client, message):
-    logger.info("Received a video from user: %s", message.from_user.id)
-    
-    video_stream = BytesIO()
-    try:
-        await message.download(file=video_stream)
-        video_stream.seek(0)
+    with open('sample.mp4', 'rb') as video_file:
+        update.message.reply_video(video=InputFile(video_file, 'sample.mp4'))
 
-        logger.info("Processing video...")
-        
-        with VideoFileClip(video_stream) as video:
-            sample_duration = min(30, video.duration)
-            sample = video.subclip(0, sample_duration)
-            
-            sample_stream = BytesIO()
-            sample.write_videofile(sample_stream, codec="libx264", threads=4, audio_codec="aac")
-            sample_stream.seek(0)
-            
-            await message.reply_video(sample_stream, caption="Here is your 30-second sample video!")
-            logger.info("Sample video sent to user: %s", message.from_user.id)
-    except Exception as e:
-        logger.error("An error occurred: %s", e)
-        await message.reply(f"An error occurred: {e}")
-    finally:
-        video_stream.close()
-        if 'sample_stream' in locals():
-            sample_stream.close()
-        logger.info("Cleanup completed")
+def main():
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    updater = Updater(bot_token)
+    dp = updater.dispatcher
+
+    dp.add_handler(CommandHandler('start', start))
+    dp.add_handler(MessageHandler(Filters.document.mime_type("video/mp4"), handle_document))
+
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == '__main__':
     threading.Thread(target=run_flask).start()
-    
-    # Start the Pyrogram Client
-    app.run()
+    main()

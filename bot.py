@@ -2,7 +2,7 @@ import os
 import logging
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from telegram import Update, InputFile
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackContext, filters
 from flask import Flask
 import threading
 

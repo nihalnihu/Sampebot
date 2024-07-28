@@ -32,12 +32,15 @@ async def start(update: Update, context: CallbackContext):
 
 async def handle_document(update: Update, context: CallbackContext):
     try:
+        await update.message.reply_text("Processing your video. Please wait...")
+
         logger.info(f"Received a document: {update.message.document.file_id}")
 
         if update.message.document.mime_type == "video/mp4":
             file = await update.message.document.get_file()
             await file.download('movie.mp4')
             logger.info("Downloaded movie.mp4 successfully.")
+            await update.message.reply_text("Video downloaded. Processing...")
 
             with VideoFileClip('movie.mp4') as video:
                 duration = video.duration
@@ -52,14 +55,18 @@ async def handle_document(update: Update, context: CallbackContext):
                 logger.info("Sample video saved as sample.mp4.")
 
             if os.path.getsize('sample.mp4') > 0:
+                await update.message.reply_text("Sample video ready. Sending...")
                 with open('sample.mp4', 'rb') as video_file:
                     await update.message.reply_video(video=InputFile(video_file, 'sample.mp4'))
-                    logger.info("Sample video sent successfully.")
+                logger.info("Sample video sent successfully.")
             else:
+                await update.message.reply_text("Error: Sample video is empty.")
                 logger.error("Sample video file is empty.")
         else:
+            await update.message.reply_text("Unsupported file type. Please send a video in MP4 format.")
             logger.info(f"Unsupported document type: {update.message.document.mime_type}")
     except Exception as e:
+        await update.message.reply_text(f"An error occurred: {e}")
         logger.error(f"An error occurred: {e}")
 
 def main():

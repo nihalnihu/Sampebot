@@ -2,7 +2,7 @@ import os
 import logging
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from telegram import Update, InputFile
-from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackContext, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
 from flask import Flask
 import threading
 
@@ -27,12 +27,12 @@ def health_check():
 def run_flask():
     app.run(host='0.0.0.0', port=8080)
 
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text('Send me a movie file and I will extract a 30-second sample.')
+async def start(update: Update, context: CallbackContext):
+    await update.message.reply_text('Send me a movie file and I will extract a 30-second sample.')
 
-def handle_document(update: Update, context: CallbackContext):
-    file = update.message.document.get_file()
-    file.download('movie.mp4')
+async def handle_document(update: Update, context: CallbackContext):
+    file = await update.message.document.get_file()
+    await file.download('movie.mp4')
 
     with VideoFileClip('movie.mp4') as video:
         duration = video.duration
@@ -42,18 +42,16 @@ def handle_document(update: Update, context: CallbackContext):
         clip.write_videofile('sample.mp4', codec='libx264')
 
     with open('sample.mp4', 'rb') as video_file:
-        update.message.reply_video(video=InputFile(video_file, 'sample.mp4'))
+        await update.message.reply_video(video=InputFile(video_file, 'sample.mp4'))
 
 def main():
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    updater = Updater(bot_token)
-    dp = updater.dispatcher
+    application = Application.builder().token(bot_token).build()
 
-    dp.add_handler(CommandHandler('start', start))
-    dp.add_handler(MessageHandler(filters.Document.MIME_TYPE == "video/mp4", handle_document))
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(MessageHandler(filters.Document.MIME_TYPE == "video/mp4", handle_document))
 
-    updater.start_polling()
-    updater.idle()
+    application.run_polling()
 
 if __name__ == '__main__':
     threading.Thread(target=run_flask).start()

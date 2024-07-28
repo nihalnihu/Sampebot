@@ -5,6 +5,7 @@ from telegram import Update, InputFile
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
 from flask import Flask
 import threading
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -49,6 +50,11 @@ async def handle_document(update: Update, context: CallbackContext):
                 start_time = max(0, duration / 2 - 15)
                 end_time = start_time + 30
                 logger.info(f"Extracting subclip from {start_time} to {end_time}.")
+
+                # Simulate progress updates
+                for i in range(10):
+                    await update.message.reply_text(f"Progress: {i*10}%")
+                    time.sleep(1)  # Simulate work being done
 
                 clip = video.subclip(start_time, end_time)
                 clip.write_videofile('sample.mp4', codec='libx264')

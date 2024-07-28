@@ -3,6 +3,8 @@ from pyrogram import Client, filters
 from moviepy.editor import VideoFileClip
 from io import BytesIO
 import os
+from flask import Flask
+import threading
 
 # Configure logging
 logging.basicConfig(
@@ -10,6 +12,22 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
 logger = logging.getLogger(__name__)
+
+
+bot = Flask(__name__)
+
+@bot.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+@bot.route('/health')
+def health_check():
+    return 'Healthy', 200
+
+def run_flask():
+    bot.run(host='0.0.0.0', port=8080)
+
+
 
 # Fetch API credentials from environment variables
 api_id = os.getenv("25731065")
@@ -49,4 +67,8 @@ async def handle_video(client, message):
             sample_stream.close()
         logger.info("Cleanup completed")
 
-app.run()
+if __name__ == '__main__':
+    threading.Thread(target=run_flask).start()
+    
+    # Start the Pyrogram Client
+    app.run()

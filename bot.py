@@ -13,7 +13,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
+# Initialize Flask app
 bot = Flask(__name__)
 
 @bot.route('/')
@@ -27,15 +27,20 @@ def health_check():
 def run_flask():
     bot.run(host='0.0.0.0', port=8080)
 
-
-
 # Fetch API credentials from environment variables
-api_id = os.getenv("25731065")
-api_hash = os.getenv("be534fb5a5afd8c3308c9ca92afde672")
-bot_token = os.getenv("7309568989:AAH665zjDcbdAokYpWySy09B_3EGBRDctpQ")
+api_id = os.getenv("TELEGRAM_API_ID")
+api_hash = os.getenv("TELEGRAM_API_HASH")
+bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 
 # Initialize the Pyrogram client
 app = Client("my_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
+
+@app.on_message(filters.command("start") & filters.private)
+async def start_command(client, message):
+    await message.reply(
+        "Hello! I'm your video processing bot. Send me a video, and I'll send you a 30-second sample from it."
+    )
+    logger.info("Sent start message to user: %s", message.from_user.id)
 
 @app.on_message(filters.video & filters.private)
 async def handle_video(client, message):

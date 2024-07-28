@@ -33,7 +33,7 @@ async def start(update: Update, context: CallbackContext):
 async def handle_document(update: Update, context: CallbackContext):
     try:
         logger.info(f"Received a document: {update.message.document.file_id}")
-        
+
         if update.message.document.mime_type == "video/mp4":
             file = await update.message.document.get_file()
             await file.download('movie.mp4')
@@ -42,11 +42,11 @@ async def handle_document(update: Update, context: CallbackContext):
             with VideoFileClip('movie.mp4') as video:
                 duration = video.duration
                 logger.info(f"Video duration: {duration} seconds.")
-                
-                start_time = max(0, duration / 2 - 15)  # Get the middle 30 seconds
+
+                start_time = max(0, duration / 2 - 15)
                 end_time = start_time + 30
                 logger.info(f"Extracting subclip from {start_time} to {end_time}.")
-                
+
                 clip = video.subclip(start_time, end_time)
                 clip.write_videofile('sample.mp4', codec='libx264')
                 logger.info("Sample video saved as sample.mp4.")
